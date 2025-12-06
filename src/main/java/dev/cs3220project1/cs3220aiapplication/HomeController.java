@@ -1,8 +1,5 @@
 package dev.cs3220project1.cs3220aiapplication;
 
-
-import dev.cs3220project1.cs3220aiapplication.User;
-import dev.cs3220project1.cs3220aiapplication.UserRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,8 +10,6 @@ import jakarta.servlet.http.HttpSession;
 
 import java.time.Year;
 import java.util.Optional;
-
-
 import java.util.UUID;
 
 @Controller
@@ -33,10 +28,9 @@ public class HomeController {
         model.addAttribute("year", Year.now().getValue());
     }
 
-
     @GetMapping("/")
     public String index(Model model, HttpSession session) {
-            populateCommon(model, session);
+        populateCommon(model, session);
         return "index";
     }
 
@@ -50,16 +44,22 @@ public class HomeController {
     }
 
     @PostMapping("/login")
-    public String loginSubmit(@RequestParam String email,
-                              @RequestParam String password,
-                              Model model,
-                              HttpSession session) {
+    public String loginSubmit(
+            @RequestParam String email,
+            @RequestParam String password,
+            Model model,
+            HttpSession session
+    ) {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isPresent() && userOpt.get().getPassword().equals(password)) {
+
             User user = userOpt.get();
-            session.setAttribute("username", user.getFirstName() != null ? user.getFirstName() : user.getEmail());
+
+            // We store the username EXACTLY as used by MealController
+            session.setAttribute("username", user.getEmail());
+
             populateCommon(model, session);
-            return "redirect:/";
+            return "redirect:/meals";
         } else {
             populateCommon(model, session);
             model.addAttribute("error", "Invalid email or password.");
@@ -70,12 +70,8 @@ public class HomeController {
     @GetMapping("/register")
     public String showRegister(Model model, HttpSession session) {
         populateCommon(model, session);
-        if (!model.containsAttribute("error")) {
-            model.addAttribute("error", "");
-        }
-        if (!model.containsAttribute("success")) {
-            model.addAttribute("success", "");
-        }
+        if (!model.containsAttribute("error")) model.addAttribute("error", "");
+        if (!model.containsAttribute("success")) model.addAttribute("success", "");
         return "register";
     }
 
@@ -89,14 +85,11 @@ public class HomeController {
             Model model,
             RedirectAttributes redirectAttributes,
             HttpSession session
-
     ) {
         populateCommon(model, session);
 
-        if (firstName == null || firstName.isBlank()
-                || lastName == null || lastName.isBlank()
-                || email == null || email.isBlank()
-                || password == null || password.isBlank()) {
+        if (firstName.isBlank() || lastName.isBlank()
+                || email.isBlank() || password.isBlank()) {
             model.addAttribute("error", "All fields are required.");
             return "register";
         }
@@ -111,18 +104,23 @@ public class HomeController {
             return "register";
         }
 
-        User user = new User(UUID.randomUUID().toString(), firstName.trim(), lastName.trim(), email.trim(), password);
+        User user = new User(
+                UUID.randomUUID().toString(),
+                firstName.trim(),
+                lastName.trim(),
+                email.trim(),
+                password
+        );
+
         userRepository.save(user);
 
-        redirectAttributes.addFlashAttribute("success", "Account created successfully. You can log in now.");
-        return "redirect:/";
+        redirectAttributes.addFlashAttribute("success", "Account created. You can log in now.");
+        return "redirect:/login";
     }
 
     @GetMapping("/logout")
     public String logout(HttpSession session) {
-        if (session != null) {
-            session.invalidate();
-        }
+        if (session != null) session.invalidate();
         return "redirect:/";
     }
 }
